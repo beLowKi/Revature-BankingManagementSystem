@@ -7,8 +7,6 @@ import com.banking.enums.TransactionType;
 
 /**
  * Represents a transaction from a Customer account.
- * 
- * @author Malcolm
  */
 public class Transaction {	
 	private int id;

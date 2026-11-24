@@ -1,12 +1,11 @@
 package com.banking;
 
-//import java.sql.Date;
-//import java.time.Instant;
 import java.util.Scanner;
 
 import com.banking.enums.AccountType;
 import com.banking.model.Account;
 import com.banking.model.Customer;
+import com.banking.operations.BankingOperations;
 
 public class Main {
 
@@ -14,75 +13,76 @@ public class Main {
 
 		// This kind of ANSI escape doesn't work
 		// with Eclipse's console :(
-//		System.out.print("\033[H\033[2J");
-//		System.out.flush();
+		// System.out.print("\033[H\033[2J");
+		// System.out.flush();
 
-		for (int i = 0; i < 50; i++) {
+		for ( int i = 0; i < 50; i++ ) {
+
 			System.out.println();
+
 		}
 
 	}
+
 
 	/**
 	 * Creates a new Customer in the database.
 	 * 
 	 * @param sc Scanner to intake user input
 	 */
-	public static void createCustomer(final Scanner sc) {
+	public static void createCustomer( final Scanner sc, final BankingOperations backend ) {
 
-		System.out.println("Creating customer:");
+		System.out.println( "Creating customer:" );
 
 		// Collecting properties
 		final String name;
 		final String email;
 		final String phone;
 
-		System.out.print("\tEnter name: ");
+		System.out.print( "\tEnter name: " );
 		name = sc.nextLine();
 
-		System.out.print("\tEnter email address: ");
+		System.out.print( "\tEnter email address: " );
 		email = sc.nextLine();
 
-		System.out.print("\tEnter phone number: ");
+		System.out.print( "\tEnter phone number: " );
 		phone = sc.nextLine();
 
 		// Building object
-		final Customer c = new Customer(name, email, phone);
+		final Customer c = new Customer( name, email, phone );
 
-		System.out.println("\n" + c);
+		System.out.println( "\n" + c );
 
 		// TODO add to database
 
 	}
+
 
 	/**
 	 * Creates a new Account in the database.
 	 * 
 	 * @param sc Scanner to intake user input.
 	 */
-	public static void createAccount(final Scanner sc) {
+	public static void createAccount( final Scanner sc, final BankingOperations backend ) {
 
-		System.out.println("Creating Account:");
+		System.out.println( "Creating Account:" );
 
 		// Collecting data
-//		final long number;  TBD I'm pretty sure this is gonna be DB-generated
+		// final long number; TBD I'm pretty sure this is gonna be DB-generated
 		final int customerId;
 		AccountType type = null;
 		final double balance;
-//		final Date date;
+		// final Date date;
 
-//		System.out.print("\tEnter account number: ");
-//		number = sc.nextLong();
+		// System.out.print("\tEnter account number: ");
+		// number = sc.nextLong();
 
-		System.out.print("\tEnter customer ID: ");
+		System.out.print( "\tEnter customer ID: " );
 		customerId = sc.nextInt();
 		sc.nextLine();
-		
-		System.out.print(
-			"\tEnter acount type " + 
-			"(" + AccountType.SAVINGS + ", " + AccountType.CURRENT + "): "
-		);
-		
+
+		System.out.print( "\tEnter acount type " + "(" + AccountType.SAVINGS + ", " + AccountType.CURRENT + "): " );
+
 		// TODO verify that a Customer with this ID exists in DB
 
 		// Loops until a valid match to AccountType enum is received
@@ -94,124 +94,149 @@ public class Main {
 
 			final String input = sc.nextLine().toUpperCase();
 
-			if (input.equals(AccountType.CURRENT.getValue())) {
+			if ( input.equals( AccountType.CURRENT.getValue() ) ) {
+
 				type = AccountType.CURRENT;
 
-			} else if (input.equals(AccountType.SAVINGS.getValue())) {
+			} else if ( input.equals( AccountType.SAVINGS.getValue() ) ) {
+
 				type = AccountType.SAVINGS;
 
 			} else {
-				System.err.println("\nInvalid input");
+
+				System.err.println( "\nInvalid input" );
+
 			}
 
-		} while (type == null);
+		} while ( type == null );
 
-		System.out.print("\tEnter balance: ");
+		System.out.print( "\tEnter balance: " );
 		balance = sc.nextDouble();
 		sc.nextLine();
 
 		// Building Account object
-		final Account acc = new Account(customerId, type, balance);
-		System.out.println("\n" + acc);
+		final Account acc = new Account( customerId, type, balance );
+		System.out.println( "\n" + acc );
 
 		// TODO save to DB
 	}
 
-	public static void main(String[] args) {
 
+	public static void main( String[] args ) {
+
+		// Connecting to backend service
+		BankingOperations backend = null;
+
+		try {
+			backend = BankOperations.getInstance();
+		} catch ( Exception e ) {
+			System.err.println( "Error connecting to backend service: " + e.getMessage() );
+			System.exit( 1 );
+		}
+		
 		// Scanner for user input
-		final Scanner sc = new Scanner(System.in);
+		final Scanner sc = new Scanner( System.in );
 
 		// Main menu loop
 		int choice = -1;
 
-		while (choice != 9) {
+		while ( choice != 9 ) {
+
 			clearScreen();
 
 			// Printing header /w title
 			System.out.println();
-			System.out.println("====================================");
-			System.out.println("       BANKING MANAGEMENT SYSTEM");
-			System.out.println("====================================");
-			System.out.println('\n');
+			System.out.println( "====================================" );
+			System.out.println( "       BANKING MANAGEMENT SYSTEM" );
+			System.out.println( "====================================" );
+			System.out.println( '\n' );
 
 			// Displaying Options
-			System.out.println("\t1. Create Customer");
-			System.out.println("\t2. Create Bank Account");
-			System.out.println("\t3. View Customer Details");
-			System.out.println("\t4. Deposity Money");
-			System.out.println("\t5. Withdraw Money");
-			System.out.println("\t6. Check Account Balance");
-			System.out.println("\t7. Transfer Money");
-			System.out.println("\t8. View Transaction History");
-			System.out.println("\t9. Exit");
-			System.out.println('\n');
+			System.out.println( "\t1. Create Customer" );
+			System.out.println( "\t2. Create Bank Account" );
+			System.out.println( "\t3. View Customer Details" );
+			System.out.println( "\t4. Deposity Money" );
+			System.out.println( "\t5. Withdraw Money" );
+			System.out.println( "\t6. Check Account Balance" );
+			System.out.println( "\t7. Transfer Money" );
+			System.out.println( "\t8. View Transaction History" );
+			System.out.println( "\t9. Exit" );
+			System.out.println( '\n' );
 
 			// Getting input
-			System.out.print("Enter your choice: ");
+			System.out.print( "Enter your choice: " );
 
 			// Assumes that any failure in getting
 			// input was on the user
 			try {
+
 				choice = sc.nextInt();
-			} catch (Exception e) {
+
+			} catch ( Exception e ) {
+
 				choice = -1;
+
 			}
 
 			sc.nextLine();
 			System.out.println();
 
 			// Performing action
-			switch (choice) {
+			switch ( choice ) {
+
 				case 1:
-					createCustomer(sc);
+					createCustomer( sc, backend );
 					break;
 
 				case 2:
-					createAccount(sc);
+					createAccount( sc, backend );
 					break;
 
 				case 3:
-					System.out.println("Showing Customer Details");
+					System.out.println( "Showing Customer Details" );
 					break;
 
 				case 4:
-					System.out.println("Making Deposit");
+					System.out.println( "Making Deposit" );
 					break;
 
 				case 5:
-					System.out.println("Making Withdrawal");
+					System.out.println( "Making Withdrawal" );
 					break;
 
 				case 6:
-					System.out.println("Showing Account Balance");
+					System.out.println( "Showing Account Balance" );
 					break;
 
 				case 7:
-					System.out.println("Making Transfer");
+					System.out.println( "Making Transfer" );
 					break;
 
 				case 8:
-					System.out.println("Showing Transaction History");
+					System.out.println( "Showing Transaction History" );
 					break;
 
 				case 9:
 					break;
 
 				default:
-					System.err.println("\nInvalid input");
+					System.err.println( "\nInvalid input" );
 					sc.nextLine();
+
 			}
-			
+
 			// Prompts to continue so any output
 			// by the action isn't overwritten immediately
-			if (choice != 9) {
-				System.out.print("\nPress ENTER to continue");
+			if ( choice != 9 ) {
+
+				System.out.print( "\nPress ENTER to continue" );
 				sc.nextLine();
+
 			}
+
 		}
 
-		System.out.println("\nExiting Program");
+		System.out.println( "\nExiting Program" );
 	}
 
 }

@@ -2,8 +2,6 @@ package com.banking.model;
 
 /**
  * Represents users of the banking service.
- * 
- * @author Malcolm
  */
 public class Customer {
 	private int id;
