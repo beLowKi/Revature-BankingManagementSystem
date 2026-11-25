@@ -3,12 +3,24 @@ package com.banking;
 import java.util.Scanner;
 
 import com.banking.enums.AccountType;
+import com.banking.exception.BackendException;
 import com.banking.model.Account;
 import com.banking.model.Customer;
 import com.banking.operations.BankingOperations;
 
 public class Main {
 
+	// src https://stackoverflow.com/questions/5762491/how-to-print-color-in-console-using-system-out-println
+	// ANSI Escape sequence to reset text color
+	public static final String ANSI_RESET = "\u001B[0m";
+
+	// ANSI Escape sequences for various colors
+	public static final String ANSI_GREEN = "\u001B[32m";
+	public static final String ANSI_RED = "\u001B[31m";
+	public static final String ANSI_YELLOW = "\u001B[33m";
+
+
+	// "Clears" console output
 	public static void clearScreen() {
 
 		// This kind of ANSI escape doesn't work
@@ -25,87 +37,188 @@ public class Main {
 	}
 
 
+	// Loops user prompt until a non-empty string is provided
+	public static String getNonEmptyString( final Scanner sc, final String prompt, boolean usePrintLn ) {
+
+		if ( usePrintLn ) {
+			System.out.println( prompt );
+		} else {
+			System.out.print( prompt );
+		}
+
+		String input = "";
+
+		while ( input.isEmpty() ) {
+			input = sc.nextLine();
+			if ( input.isEmpty() ) {
+				System.out.println( ANSI_RED + "\nInvalid input; cannot be empty string\n" + ANSI_RESET );
+			}
+		}
+
+		return input;
+
+	}
+
+
 	/**
 	 * Creates a new Customer in the database.
 	 * 
-	 * @param sc Scanner to intake user input
+	 * @param  sc               Scanner to intake user input
+	 * @throws BackendException
 	 */
-	public static void createCustomer( final Scanner sc, final BankingOperations backend ) {
+	public static void createCustomer( final Scanner sc ) throws BackendException {
 
-		System.out.println( "Creating customer:" );
+		// Connecting to backend service
+		final BankingOperations backend = BankOperations.getInstance();
 
 		// Collecting properties
-		final String name;
-		final String email;
-		final String phone;
+		System.out.println( "Creating customer:" );
 
-		System.out.print( "\tEnter name: " );
-		name = sc.nextLine();
-
-		System.out.print( "\tEnter email address: " );
-		email = sc.nextLine();
-
-		System.out.print( "\tEnter phone number: " );
-		phone = sc.nextLine();
+		final String name = getNonEmptyString( sc, "\tEnter name: ", false );
+		final String email = getNonEmptyString( sc, "\tEnter email address: ", false );
+		final String phone = getNonEmptyString( sc, "\tEnter phone number: ", false );
 
 		// Building object
 		final Customer c = new Customer( name, email, phone );
 
-		System.out.println( "\n" + c );
+		// Adding to database
+		try {
+			backend.createCustomer( c );
+			System.out.println( ANSI_GREEN + "\nSuccessfully created new Customer" );
 
-		// TODO add to database
+		} catch ( BackendException e ) {
+			System.out.println( ANSI_RED + "\n" + e.getMessage() );
 
+			// DEBUG
+			//			e.printStackTrace();
+
+		}
+
+		// Reset console text color
+		System.out.print( ANSI_RESET );
+
+	}
+
+
+	/**
+	 * Handles when customer details are requested. Prompts the user to input a
+	 * Customer ID, searches the backend for a match, then finally prints the
+	 * results to console.
+	 * 
+	 * @throws BackendException
+	 */
+	public static void viewCustomerDetails( final Scanner sc ) throws BackendException {
+
+		// Connecting to backend service
+		final BankingOperations backend = BankOperations.getInstance();
+
+		// Prompting user for Customer ID
+		int customerId = -1;
+
+		System.out.print( "\tEnter Customer ID: " );
+
+		// Loops until valid ID is input
+		while ( customerId <= 0 ) {
+
+			customerId = sc.nextInt();
+			if ( customerId > 0 ) {
+				break;
+			}
+
+			System.out.println( ANSI_RED + "\nInvalid input; must be greater than 0\n" + ANSI_RESET );
+
+		}
+
+		sc.nextLine();
+		System.out.println();
+
+		// Finding matching Customer in backend
+		Customer c = null;
+
+		try {
+			c = backend.getCustomer( customerId );
+		} catch ( BackendException e ) {
+			System.out.println( ANSI_RED + "\n" + e.getMessage() + ANSI_RESET );
+			return;
+		}
+
+		// No Customer matching the given ID was found
+		if ( c == null ) {
+			System.out.println( ANSI_YELLOW + "No Customer with ID " + customerId + " found" + ANSI_RESET );
+			return;
+		}
+
+		// Displaying details
+		// Header
+		System.out.printf(
+			ANSI_YELLOW + "%20.20s %20.20s %20.20s %20.20s" + ANSI_RESET + "\n",
+			"ID",
+			"NAME",
+			"EMAIL",
+			"PHONE"
+		);
+		System.out
+			.println( String.format( "+%20.20s|%20.20s|%20.20s|%20.20s+", " ", " ", " ", " " ).replaceAll( " ", "-" ) );
+
+		// Content
+		System.out
+			.printf( "%20d | %18.18s | %18.18s | %18.18s \n", c.getId(), c.getName(), c.getEmail(), c.getPhone() );
 	}
 
 
 	/**
 	 * Creates a new Account in the database.
 	 * 
-	 * @param sc Scanner to intake user input.
+	 * @param  sc               Scanner to intake user input.
+	 * @throws BackendException
 	 */
-	public static void createAccount( final Scanner sc, final BankingOperations backend ) {
+	public static void createAccount( final Scanner sc ) throws BackendException {
 
-		System.out.println( "Creating Account:" );
+		// Connecting to backend service
+		final BankingOperations backend = BankOperations.getInstance();
 
 		// Collecting data
-		// final long number; TBD I'm pretty sure this is gonna be DB-generated
+		System.out.println( "Creating Account:" );
+
 		final int customerId;
 		AccountType type = null;
 		final double balance;
-		// final Date date;
-
-		// System.out.print("\tEnter account number: ");
-		// number = sc.nextLong();
 
 		System.out.print( "\tEnter customer ID: " );
 		customerId = sc.nextInt();
 		sc.nextLine();
 
-		System.out.print( "\tEnter acount type " + "(" + AccountType.SAVINGS + ", " + AccountType.CURRENT + "): " );
+		// Making sure this Customer exists
+		try {
+			if ( backend.getCustomer( customerId ) == null ) {
+				System.out.println( ANSI_RED + "\nCustomer with ID " + customerId + " not found" + ANSI_RESET );
+				return;
+			}
+		} catch ( BackendException e ) {
+			System.out.println( ANSI_RED + "\n" + e.getMessage() + ANSI_RESET );
 
-		// TODO verify that a Customer with this ID exists in DB
+			// DEBUG
+			//			e.printStackTrace();
+
+			return;
+		}
+
+		System.out.print( "\tEnter account type " + "(" + AccountType.SAVINGS + ", " + AccountType.CURRENT + "): " );
 
 		// Loops until a valid match to AccountType enum is received
 		// TODO extract as general method to match input string
 		// to StrEnum for TransactionType later?
 		do {
-			// TODO try and put print statement in here and have
-			// it reset cursor on invalid input with bonus ERROR msg?
-
 			final String input = sc.nextLine().toUpperCase();
 
 			if ( input.equals( AccountType.CURRENT.getValue() ) ) {
-
 				type = AccountType.CURRENT;
 
 			} else if ( input.equals( AccountType.SAVINGS.getValue() ) ) {
-
 				type = AccountType.SAVINGS;
 
 			} else {
-
 				System.err.println( "\nInvalid input" );
-
 			}
 
 		} while ( type == null );
@@ -116,9 +229,20 @@ public class Main {
 
 		// Building Account object
 		final Account acc = new Account( customerId, type, balance );
-		System.out.println( "\n" + acc );
+		System.out.println();
 
-		// TODO save to DB
+		// Saving to backend
+		try {
+			backend.createAccount( acc );
+			System.out.println( ANSI_GREEN + "Successfully created new " + type.getValue() + " account" );
+
+		} catch ( BackendException e ) {
+			System.out.println( ANSI_RED + "\n" + e.getMessage() );
+		}
+
+		// Reset console text color
+		System.out.print( ANSI_RESET );
+
 	}
 
 
@@ -129,11 +253,11 @@ public class Main {
 
 		try {
 			backend = BankOperations.getInstance();
-		} catch ( Exception e ) {
-			System.err.println( "Error connecting to backend service: " + e.getMessage() );
+		} catch ( BackendException e ) {
+			e.printStackTrace();
 			System.exit( 1 );
 		}
-		
+
 		// Scanner for user input
 		final Scanner sc = new Scanner( System.in );
 
@@ -155,7 +279,7 @@ public class Main {
 			System.out.println( "\t1. Create Customer" );
 			System.out.println( "\t2. Create Bank Account" );
 			System.out.println( "\t3. View Customer Details" );
-			System.out.println( "\t4. Deposity Money" );
+			System.out.println( "\t4. Deposit Money" );
 			System.out.println( "\t5. Withdraw Money" );
 			System.out.println( "\t6. Check Account Balance" );
 			System.out.println( "\t7. Transfer Money" );
@@ -169,60 +293,62 @@ public class Main {
 			// Assumes that any failure in getting
 			// input was on the user
 			try {
-
 				choice = sc.nextInt();
-
 			} catch ( Exception e ) {
-
 				choice = -1;
-
 			}
 
 			sc.nextLine();
 			System.out.println();
 
 			// Performing action
-			switch ( choice ) {
+			try {
 
-				case 1:
-					createCustomer( sc, backend );
-					break;
+				switch ( choice ) {
 
-				case 2:
-					createAccount( sc, backend );
-					break;
+					case 1:
+						createCustomer( sc );
+						break;
 
-				case 3:
-					System.out.println( "Showing Customer Details" );
-					break;
+					case 2:
+						createAccount( sc );
+						break;
 
-				case 4:
-					System.out.println( "Making Deposit" );
-					break;
+					case 3:
+						viewCustomerDetails( sc );
+						;
+						break;
 
-				case 5:
-					System.out.println( "Making Withdrawal" );
-					break;
+					case 4:
+						System.out.println( "Making Deposit" );
+						break;
 
-				case 6:
-					System.out.println( "Showing Account Balance" );
-					break;
+					case 5:
+						System.out.println( "Making Withdrawal" );
+						break;
 
-				case 7:
-					System.out.println( "Making Transfer" );
-					break;
+					case 6:
+						System.out.println( "Showing Account Balance" );
+						break;
 
-				case 8:
-					System.out.println( "Showing Transaction History" );
-					break;
+					case 7:
+						System.out.println( "Making Transfer" );
+						break;
 
-				case 9:
-					break;
+					case 8:
+						System.out.println( "Showing Transaction History" );
+						break;
 
-				default:
-					System.err.println( "\nInvalid input" );
-					sc.nextLine();
+					case 9:
+						break;
 
+					default:
+						System.err.println( "\nInvalid input" );
+						sc.nextLine();
+
+				}
+			} catch ( BackendException e ) {
+				System.err.println( "Error connecting to backend: " + e.getMessage() );
 			}
 
 			// Prompts to continue so any output

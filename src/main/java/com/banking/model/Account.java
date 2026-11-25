@@ -10,14 +10,33 @@ import com.banking.enums.AccountType;
  */
 public class Account {
 
+	public static final String TABLE = "accounts";
+
 	private long number;
 	private int customerId;
 	private AccountType accountType;
 	private double balance;
 	private Date date;
 
+
 	// Default constructor
 	public Account() {}
+
+
+	/**
+	 * @param number
+	 * @param customerId
+	 * @param accountType
+	 * @param balance
+	 * @param date
+	 */
+	public Account( long number, int customerId, AccountType accountType, double balance, Date date ) {
+		this.number = number;
+		this.customerId = customerId;
+		this.accountType = accountType;
+		this.balance = balance;
+		this.date = date;
+	}
 
 
 	/**

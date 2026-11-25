@@ -2,6 +2,7 @@ package com.banking.operations;
 
 import java.util.List;
 
+import com.banking.exception.BackendException;
 import com.banking.model.Account;
 import com.banking.model.Customer;
 import com.banking.model.Transaction;
@@ -11,16 +12,29 @@ import com.banking.model.Transaction;
  */
 public interface BankingOperations {
 
-	boolean createCustomer( final Customer c );
+	/**
+	 * Creates a new Customer.
+	 * 
+	 * @param  c                    Incoming Customer data
+	 * @throws NullPointerException If provided Customer is null
+	 */
+	void createCustomer( final Customer c ) throws NullPointerException, BackendException;
 
 
-	Customer getCustomer( int customerId );
+	/**
+	 * Returns the full info for the Customer with the given ID or {@code null} if
+	 * no match is found.
+	 * 
+	 * @param  customerId Target Customer ID
+	 * @return            Customer data or null on ID miss
+	 */
+	Customer getCustomer( int customerId ) throws BackendException;
 
 
-	boolean createAccount( final Account a );
+	void createAccount( final Account a ) throws NullPointerException, BackendException;
 
 
-	Account getAccount( int customerId, long accountNumber );
+	Account getAccount( int customerId, long accountNumber ) throws BackendException;
 
 
 	boolean deposit( int customerId, long accountNumber, double amount );

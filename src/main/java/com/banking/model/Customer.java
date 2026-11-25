@@ -4,6 +4,9 @@ package com.banking.model;
  * Represents users of the banking service.
  */
 public class Customer {
+	
+	public static final String TABLE = "customers";
+	
 	private int id;
 	private String name;
 	private String email;

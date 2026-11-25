@@ -7,46 +7,40 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public final class DbConnection {
-
-	// private final static String URL =
-	// "jdbc:mysql://localhost:3306/bms?createIfNotExist=true";
-	private static Connection conn = null;
-
+	
+	// JDBC property keys
+	private static final String JDBC_DRIVER_CLASSNAME_KEY = "jdbc.driverClassName";
+	private static final String JDBC_URL_KEY = "jdbc.url";
+	private static final String JDBC_USERNAME = "jdbc.username";
+	private static final String JDBC_PASSWD = "jdbc.password";
+	
+	// Connection properties
+	private static Properties dbProperties = null;
+	
 
 	/**
 	 * @return                        The database connection
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
-	public static Connection getConnection() throws SQLException, IOException, ClassNotFoundException {
+	public static Connection get() throws SQLException, IOException, ClassNotFoundException {
 		
-		// Creating connection
-		if ( conn == null ) {
-
-			// Loading properties from configuration file
-			final Properties ps = new Properties();
-			ps.load( ClassLoader.getSystemClassLoader().getResourceAsStream( "db.properties" ) );
-
-			final String driver = ps.getProperty( "jdbc.driverClassName" );
-			final String url = ps.getProperty( "jdbc.url" );
-			final String username = ps.getProperty( "jdbc.username" );
-			final String passwd = ps.getProperty( "jdbc.password" );
-
-			// DEBUG
-			// System.out.println( "Driver: " + driver );
-			// System.out.println( "URL: " + url);
-			// System.out.println( "Username: " + username );
-			// System.out.println( "Password: " + passwd );
-
+		// Loading properties from configuration file
+		if ( dbProperties == null ) {
+			dbProperties = new Properties();
+			dbProperties.load( ClassLoader.getSystemClassLoader().getResourceAsStream( "db.properties" ) );
+			
 			// Sets driver
 			// NOTE not strictly necessary because the MySQL driver
 			// is automatically found and registered
-			Class.forName( driver );
-
-			conn = DriverManager.getConnection( url, username, passwd );
+			Class.forName( dbProperties.getProperty( JDBC_DRIVER_CLASSNAME_KEY ) );
 		}
-
-		return conn;
+		
+		return DriverManager.getConnection( 
+			dbProperties.getProperty( JDBC_URL_KEY ), 
+			dbProperties.getProperty( JDBC_USERNAME ), 
+			dbProperties.getProperty( JDBC_PASSWD ) 
+		);
 	}
 
 }
