@@ -4,11 +4,14 @@ import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.banking.database.DbConnection;
 import com.banking.enums.AccountType;
 import com.banking.exception.BackendException;
+import com.banking.exception.CustomerNotFoundException;
+import com.banking.exception.InsufficientBalanceException;
 import com.banking.model.Account;
 import com.banking.model.Customer;
 import com.banking.model.Transaction;
@@ -228,7 +231,7 @@ public final class BankOperations implements BankingOperations {
 		}
 
 		// SQL Query
-		final String sqlString = 
+		final String sqlString =
 			"SELECT * FROM " + Account.TABLE +
 				" WHERE number = " + accountNumber + " AND" +
 				" customer_id = " + customerId +
@@ -245,26 +248,10 @@ public final class BankOperations implements BankingOperations {
 				return null;
 			}
 
-			// Converting returned row into a Customer object
-			// TBD instead of asserts, which would throw meaningless (to the user)
-			// AssertionError, use a custom Exception. However, Error may be
-			// more appropriate because if the wrong customer ID or an
-			// account type with an invalid value are returned, then something
-			// is severely wrong with the database's state, and there's nothing
-			// that they, the user, could do about it. By definition, that sounds
-			// more like an Error than an Exception since the latter implies
-			// that the user should respond in some way.
-			//
-			// ALSO I could make custom Errors. In fact, some uses
-			// of BackendException should probably be a BackendError?
-			// Things like failing to connect to the database, for example.
+			// Loading Account 
 			final long number = result.getLong( "number" );
 			final int actualCustomerId = result.getInt( "customer_id" );
-			assert customerId == actualCustomerId;
-
-			final AccountType type = AccountType.valueOf( result.getString( "type" ) );
-			assert type != null;
-
+			final AccountType type = AccountType.valueOf( result.getString( "account_type" ) );
 			final double balance = result.getDouble( "balance" );
 			final Date date = result.getDate( "date" );
 
@@ -280,62 +267,216 @@ public final class BankOperations implements BankingOperations {
 
 
 	@Override
-	public boolean deposit( int customerId, long accountNumber, double amount ) {
-		// TODO Auto-generated method stub
-		return false;
+	public List<Account> getAccountsOf( int customerId ) throws IllegalArgumentException, BackendException {
+
+		// Catching invalid arguments before touching the database
+		if ( customerId <= 0 ) {
+			throw new IllegalArgumentException( "Customer ID must be greater than 0" );
+		}
+
+		// SQL Query
+		final String sqlString = "SELECT * FROM " + Account.TABLE + " WHERE customer_id = " + customerId;
+
+		// Executing statement
+		try (
+			Connection conn = DbConnection.get();
+			PreparedStatement stmt = conn.prepareStatement( sqlString )
+		) {
+
+			ResultSet results = stmt.executeQuery();
+			List<Account> accounts = new ArrayList<Account>();
+
+			// Extracting Accounts
+			while ( results.next() ) {
+
+				final long number = results.getLong( "number" );
+				final AccountType type = AccountType.valueOf( results.getString( "account_type" ) );
+				final double balance = results.getDouble( "balance" );
+				final Date date = results.getDate( "date" );
+
+				accounts.add( new Account( number, customerId, type, balance, date ) );
+
+			}
+
+			return accounts;
+
+		} catch ( Exception e ) {
+			BackendException be = new BackendException( e.getMessage() );
+			be.addSuppressed( e );
+			throw be;
+		}
+
 	}
 
 
 	@Override
-	public boolean deposit( Account a, double amount ) {
-		// TODO Auto-generated method stub
-		return false;
+	public List<Account> getAccountsOf( Customer c ) throws NullPointerException, BackendException {
+		return getAccountsOf( c.getId() );
 	}
 
 
 	@Override
-	public boolean withdraw( int customerId, long accountNumber, double amount ) {
-		// TODO Auto-generated method stub
-		return false;
+	public void deposit(
+		int customerId,
+		long accountNumber,
+		double amount
+	) throws IllegalArgumentException, CustomerNotFoundException, BackendException {
+
+		// Catching illegal arguments before touching database
+		if ( customerId <= 0 ) {
+			throw new IllegalArgumentException( "Customer ID must be greater than 0" );
+		}
+		if ( accountNumber <= 0 ) {
+			throw new IllegalArgumentException( "Account number must be greater than 0" );
+		}
+		if ( amount <= 0.0 ) {
+			throw new IllegalArgumentException( "Deposit amount must be greater than 0" );
+		}
+
+		// Checking for existing Customer
+		if ( getCustomer( customerId ) == null ) {
+			throw new CustomerNotFoundException( "Customer with ID " + customerId + " not found" );
+		}
+
+		// SQL Query
+		final String sqlString =
+			"UPDATE " + Account.TABLE +
+				" SET balance = balance + " + amount +
+				" WHERE number = " + accountNumber + " AND" +
+				" customer_id = " + customerId + ";";
+
+		// Executing statement
+		try (
+			Connection conn = DbConnection.get();
+			PreparedStatement stmt = conn.prepareStatement( sqlString )
+		) {
+
+			if ( stmt.executeUpdate() != 1 ) {
+				throw new BackendException( "Failed to update Account balance" );
+			}
+
+		} catch ( BackendException e ) {
+			throw e;
+
+		} catch ( Exception e ) {
+			BackendException be = new BackendException( "Error making deposit: " + e.getMessage() );
+			be.addSuppressed( e );
+			throw be;
+		}
+
 	}
 
 
 	@Override
-	public boolean withdraw( Account a, double amount ) {
-		// TODO Auto-generated method stub
-		return false;
+	public void deposit(
+		Account a,
+		double amount
+	) throws NullPointerException, IllegalArgumentException, BackendException, CustomerNotFoundException {
+		deposit( a.getCustomerId(), a.getNumber(), amount );
 	}
 
 
 	@Override
-	public boolean transfer( Account from, Account to, double amount ) {
-		// TODO Auto-generated method stub
-		return false;
+	public void withdraw(
+		int customerId,
+		long accountNumber,
+		double amount
+	) throws InsufficientBalanceException, BackendException, CustomerNotFoundException {
+
+		// Catching illegal arguments before touching database
+		if ( customerId <= 0 ) {
+			throw new IllegalArgumentException( "Customer ID must be greater than 0" );
+		}
+		if ( accountNumber <= 0 ) {
+			throw new IllegalArgumentException( "Account number must be greater than 0" );
+		}
+		if ( amount <= 0.0 ) {
+			throw new IllegalArgumentException( "Withdrawal amount must be greater than 0" );
+		}
+
+		// Checking for existing Customer
+		if ( getCustomer( customerId ) == null ) {
+			throw new CustomerNotFoundException( "Customer with ID " + customerId + " not found" );
+		}
+
+		// Checking Account balance to ensure it
+		// has enough funds to withdraw
+		Account acc = getAccount( customerId, accountNumber );
+		if ( acc.getBalance() < amount ) {
+			throw new InsufficientBalanceException( "Withdrawal denied; insufficient funds" );
+		}
+
+		// SQL Query
+		final String sqlString =
+			"UPDATE " + Account.TABLE +
+				" SET balance = balance - " + amount +
+				" WHERE number = " + accountNumber + " AND" +
+				" customer_id = " + customerId + ";";
+
+		// Executing statement
+		try (
+			Connection conn = DbConnection.get();
+			PreparedStatement stmt = conn.prepareStatement( sqlString )
+		) {
+
+			if ( stmt.executeUpdate() != 1 ) {
+				throw new BackendException( "Failed to update Account balance" );
+			}
+
+		} catch ( BackendException e ) {
+			throw e;
+
+		} catch ( Exception e ) {
+			BackendException be = new BackendException( "Error making deposit: " + e.getMessage() );
+			be.addSuppressed( e );
+			throw be;
+		}
+
 	}
 
 
 	@Override
-	public boolean transfer(
+	public void withdraw(
+		Account a,
+		double amount
+	) throws NullPointerException, InsufficientBalanceException, BackendException, CustomerNotFoundException {
+		withdraw( a.getCustomerId(), a.getNumber(), amount );
+	}
+
+
+	@Override
+	public void transfer(
 		int fromCustomerId,
 		long fromAccountNumber,
 		int toCustomerId,
 		long toAccountNumber,
 		double amount
-	) {
+	) throws InsufficientBalanceException, IllegalArgumentException, BackendException {
 		// TODO Auto-generated method stub
-		return false;
+
 	}
 
 
 	@Override
-	public List<Transaction> getTransactionHistory( int customerId ) {
+	public void transfer(
+		Account from,
+		Account to,
+		double amount
+	) throws InsufficientBalanceException, NullPointerException, IllegalArgumentException, BackendException {
+		// TODO Auto-generated method stub
+
+	}
+
+
+	@Override
+	public List<Transaction> getTransactionHistory( int customerId ) throws BackendException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 
 	@Override
-	public List<Transaction> getTransactionHistory( Customer c ) {
+	public List<Transaction> getTransactionHistory( Customer c ) throws NullPointerException, BackendException {
 		// TODO Auto-generated method stub
 		return null;
 	}
